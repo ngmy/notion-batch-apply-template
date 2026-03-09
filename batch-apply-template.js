@@ -4,6 +4,11 @@ import { Client } from '@notionhq/client';
 
 const notion = new Client({ auth: process.env.NOTION_TOKEN });
 
+function normalizeUuid(uuid) {
+  const hex = uuid.replace(/-/g, '');
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
+
 function extractUuid(str) {
   const m = String(str).match(
     /\b[0-9a-fA-F]{8}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{12}\b/
@@ -11,16 +16,20 @@ function extractUuid(str) {
   if (!m) {
     throw new Error(`No UUID found in input: ${str}`);
   }
-  return m[0];
+  return normalizeUuid(m[0]);
 }
 
 function parseArgs(argv) {
-  const args = { db: null, template: null, delayMs: 150 };
+  const args = {
+    dataSource: null,
+    template: null,
+    delayMs: 150,
+  };
 
   for (let i = 2; i < argv.length; i++) {
     const a = argv[i];
-    if (a === '--db') {
-      args.db = argv[++i];
+    if (a === '--data-source' || a === '--ds') {
+      args.dataSource = argv[++i];
     } else if (a === '--template') {
       args.template = argv[++i];
     } else if (a === '--delay') {
@@ -30,8 +39,8 @@ function parseArgs(argv) {
     }
   }
 
-  if (!args.db) {
-    throw new Error('Missing required argument: --db');
+  if (!args.dataSource) {
+    throw new Error('Missing required argument: --data-source (or --ds)');
   }
   if (Number.isNaN(args.delayMs) || args.delayMs < 0) {
     throw new Error('Invalid value for --delay (must be a non-negative number)');
@@ -44,13 +53,13 @@ async function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
-async function listAllPagesInDataSource(data_source_id) {
+async function listAllPagesInDataSource(dataSourceId) {
   const pages = [];
   let cursor = undefined;
 
   while (true) {
     const res = await notion.dataSources.query({
-      data_source_id,
+      data_source_id: dataSourceId,
       start_cursor: cursor,
       page_size: 100,
     });
@@ -65,15 +74,15 @@ async function listAllPagesInDataSource(data_source_id) {
   return pages;
 }
 
-async function applyTemplateToPage({ page_id, templateId }) {
+async function applyTemplateToPage(pageId, templateId) {
   const template = templateId
     ? { type: 'template_id', template_id: templateId }
     : { type: 'default' };
 
   return notion.pages.update({
-    page_id,
+    page_id: pageId,
     erase_content: true,
-    template,
+    template: template,
   });
 }
 
@@ -82,52 +91,30 @@ async function main() {
     throw new Error('Missing environment variable: NOTION_TOKEN');
   }
 
-  const { db, template, delayMs } = parseArgs(process.argv);
+  const { dataSource, template, delayMs } = parseArgs(process.argv);
 
-  const database_id = extractUuid(db);
-  const template_id = template ? extractUuid(template) : null;
+  const dataSourceId = extractUuid(dataSource);
+  const templateId = template ? extractUuid(template) : null;
 
-  const dbObj = await notion.databases.retrieve({ database_id });
-
-  // Field names can differ depending on SDK/API versions.
-  const dataSources =
-    dbObj.data_sources ||
-    dbObj.dataSources ||
-    (dbObj.data_source ? [dbObj.data_source] : null);
-
-  if (!dataSources || dataSources.length === 0) {
-    throw new Error(
-      'Could not determine data sources for this database. This may be due to an SDK/API version mismatch.'
-    );
-  }
-
-  console.log(`Database: ${database_id}`);
-  console.log(`Template: ${template_id ? `template_id=${template_id}` : 'default'}`);
+  console.log(`Data source: ${dataSourceId}`);
+  console.log(`Template: ${templateId ?? 'default'}`);
   console.log(`Delay: ${delayMs} ms`);
-  console.log(`Data sources: ${dataSources.length}`);
 
-  for (const ds of dataSources) {
-    const data_source_id = ds.id || (ds.url ? extractUuid(ds.url) : null);
-    if (!data_source_id) {
-      throw new Error('Could not determine data_source_id from database response.');
+  const pages = await listAllPagesInDataSource(dataSourceId);
+  console.log(`Pages: ${pages.length}`);
+
+  for (let i = 0; i < pages.length; i++) {
+    const pageId = pages[i].id;
+
+    try {
+      await applyTemplateToPage(pageId, templateId);
+      console.log(`[${i + 1}/${pages.length}] OK: ${pageId}`);
+    } catch (e) {
+      const details = e?.body ? JSON.stringify(e.body) : String(e);
+      console.error(`[${i + 1}/${pages.length}] FAILED: ${pageId} | ${details}`);
     }
 
-    const pages = await listAllPagesInDataSource(data_source_id);
-    console.log(`Data source: ${data_source_id} | Pages: ${pages.length}`);
-
-    for (let i = 0; i < pages.length; i++) {
-      const page_id = pages[i].id;
-
-      try {
-        await applyTemplateToPage({ page_id, templateId: template_id });
-        console.log(`[${i + 1}/${pages.length}] OK: ${page_id}`);
-      } catch (e) {
-        const details = e?.body ? JSON.stringify(e.body) : String(e);
-        console.error(`[${i + 1}/${pages.length}] FAILED: ${page_id} | ${details}`);
-      }
-
-      await sleep(delayMs);
-    }
+    await sleep(delayMs);
   }
 }
 

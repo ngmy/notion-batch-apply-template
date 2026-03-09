@@ -1,6 +1,6 @@
 # Notion Batch Apply Template
 
-This Node.js script allows you to batch apply a Notion template to all existing pages within a specific database.
+This Node.js script allows you to batch apply a Notion template to all existing pages within a specific data source.
 
 > [!WARNING]
 > This script is configured with `erase_content: true`.
@@ -31,16 +31,20 @@ export NOTION_TOKEN="your_integration_token"
 Run the script:
 
 ```bash
-notion-batch-apply-template --db <database_id_or_url> [options]
+notion-batch-apply-template --data-source <data_source_id> [options]
 ```
 
 ### Arguments
 
-| Argument     | Required | Default   | Description                                                                       |
-|--------------|----------|-----------|-----------------------------------------------------------------------------------|
-| `--db`       | Yes      | -         | The ID or URL of the target Notion database.                                      |
-| `--template` | No       | `default` | The ID or URL of the template to apply. If omitted, the default template is used. |
-| `--delay`    | No       | `150`     | Delay in milliseconds between API calls to avoid rate limiting.                   |
+| Argument                    | Required | Default   | Description                                                                       |
+|-----------------------------|----------|-----------|-----------------------------------------------------------------------------------|
+| `--data-source` (or `--ds`) | Yes      | -         | The ID of the target data source.                                                 |
+| `--template`                | No       | `default` | The ID or URL of the template to apply. If omitted, the default template is used. |
+| `--delay`                   | No       | `150`     | Delay in milliseconds between API calls to avoid rate limiting.                   |
+
+> [!TIP]
+> To get a data source ID from the Notion app, the settings menu for a database includes a "Copy data source ID" button under "Manage data sources":
+> ![](https://mintcdn.com/notion-demo/S-I3qLQnwRa7HjdK/images/reference/image-4.png?w=2500&fit=max&auto=format&n=S-I3qLQnwRa7HjdK&q=85&s=02948f93889722aa8adfce042bdd8b54)
 
 ## License
 

@@ -1,7 +1,7 @@
 {
   "name": "notion-batch-apply-template",
   "type": "module",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "This Node.js script allows you to batch apply a Notion template to all existing pages within a specific database.",
   "keywords": [
     "notion",
