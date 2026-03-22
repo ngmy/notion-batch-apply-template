@@ -1,6 +1,5 @@
 {
   "name": "notion-batch-apply-template",
-  "type": "module",
   "version": "0.2.0",
   "description": "This Node.js script allows you to batch apply a Notion template to all existing pages within a specific database.",
   "keywords": [
@@ -8,9 +7,20 @@
     "cli",
     "batch-apply-template"
   ],
+  "homepage": "https://github.com/ngmy/notion-batch-apply-template#readme",
+  "bugs": {
+    "url": "https://github.com/ngmy/notion-batch-apply-template/issues"
+  },
   "license": "MIT",
+  "author": "Yuta Nagamiya <y.nagamiya@gmail.com> (https://ngmy.github.io/)",
+  "funding": "https://github.com/sponsors/ngmy",
+  "type": "module",
   "bin": {
     "notion-batch-apply-template": "batch-apply-template.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ngmy/notion-batch-apply-template.git"
   },
   "dependencies": {
     "@notionhq/client": "^5.11.1"
